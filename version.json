@@ -1,7 +1,7 @@
 {
-  "versionCode": 13,
-  "versionName": "1.10.0",
-  "apkUrl": "https://raw.githubusercontent.com/brandonmathew/chessmonger-android/main/ChessMongerAndroid-1.10.0.apk",
-  "sha256": "07e37efd63e9fc8e5a6379e5bee5733711636ad459653eba5735bfafa389bd7e",
-  "notes": "Robust new-game detection after a game ends: the checkmate pause now survives the win popup, and a new game is recognised even if you already played the first move."
+  "versionCode": 14,
+  "versionName": "1.11.0",
+  "apkUrl": "https://github.com/brandonmathew/chessmonger-android/releases/download/v1.11.0/ChessMongerAndroid-1.11.0.apk",
+  "sha256": "84f356be3b825e07bb329a3eb690fb047590021b17b4743ad8a1f2b37ecb8247",
+  "notes": "Auto-update now uses GitHub Releases and downloads and installs the update in the app, with no browser step. You still tap Install once in the system installer."
 }

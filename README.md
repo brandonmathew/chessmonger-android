@@ -6,6 +6,38 @@ front, tracks the game, asks Stockfish 17.1 at max strength for the
 best move on your turn, and draws that move as a green arrow on top
 of the board. It never taps or plays for you — suggestion only.
 
+## v1.11.0: GitHub Releases auto-update with download & install
+
+Replaces the v1.9.0 raw-main version.json check, which
+suffered GitHub raw CDN caching (v1.10.0 was pushed but
+raw still served v1.9.0).
+
+- UpdateChecker now calls the GitHub Releases API for
+  the latest release, reads its version.json asset for
+  versionCode / sha256 / notes, and downloads the APK
+  asset from that release. A release asset URL is unique
+  to its release, so it cannot serve a previous version
+  by mistake, and release assets allow up to 2 GB, so
+  the 50 MB warning is gone and APKs no longer bloat
+  git history.
+- Download & install, as requested: tapping "Download
+  & install" downloads the APK in the app (no browser),
+  verifies its SHA-256 against version.json (a mismatch
+  deletes the file and never launches the installer),
+  then opens the system installer automatically.
+  Honest limit: Android does not let a normal app
+  install silently. You still tap Install once in the
+  system installer, and the very first time you must
+  allow "Install unknown apps" for ChessMonger, which
+  the dialog opens in Settings for you. After that it
+  is download + one Install tap.
+- No AndroidX FileProvider is available in the manual
+  build pipeline, so a minimal UpdateFileProvider
+  (ContentProvider, serves only the update APK from
+  the app cache dir) hands the file to the installer.
+  Manifest gains REQUEST_INSTALL_PACKAGES and that
+  provider entry.
+
 ## v1.10.0: robust new-game detection
 
 The user played a whole match on v1.9.0, but new-game
