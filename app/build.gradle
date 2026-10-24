@@ -1,0 +1,49 @@
+// Android app module, v2.0.0.
+// AGP 8.8 + Gradle 8.10, compileSdk 36, targetSdk 37, minSdk 26.
+// This file is new in v2.0.0: its first CI run validates it.
+// The shipped v2.0.0 APK was built with build.sh (manual
+// pipeline, verified here), which remains the fallback.
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.chessmonger.android'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.chessmonger.android"
+        minSdk 26
+        targetSdk 37
+        versionCode 16
+        versionName "2.0.0"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs = ['src/main/java']
+            res.srcDirs = ['src/main/res']
+            manifest.srcFile 'src/main/AndroidManifest.xml'
+            // Stockfish binary, packaged as a native library.
+            jniLibs.srcDirs = ['../../stockfish-bin']
+        }
+        test {
+            java.srcDirs = ['src/test/java']
+        }
+    }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+}

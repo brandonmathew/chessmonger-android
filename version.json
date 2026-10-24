@@ -1,7 +1,7 @@
 {
-  "versionCode": 15,
-  "versionName": "1.12.0",
-  "apkUrl": "https://github.com/brandonmathew/chessmonger-android/releases/download/v1.12.0/ChessMongerAndroid-1.12.0.apk",
-  "sha256": "ffba71620ba7cf403c82a10302ae3c12a03de648038b7f94a2d25d51d758a790",
-  "notes": "Board detection now works across board colours: beige, white-on-white, and black-on-black boards that used to read as empty now read exactly. Highlights and low-contrast boards are also more reliable."
+  "versionCode": 16,
+  "versionName": "2.0.0",
+  "apkUrl": "https://github.com/brandonmathew/chessmonger-android/releases/download/v2.0.0/ChessMongerAndroid-2.0.0.apk",
+  "sha256": "95b126bea7fcc8674a88389ed626413a644afaea22a9b40d3bedd8d36078e260",
+  "notes": "Full rebuild: cleaner code, a real test suite, and a tracker log you can share. Same board detection and Stockfish strength as 1.12.0, now in a structure that is easier to fix and test."
 }
