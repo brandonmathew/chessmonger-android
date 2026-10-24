@@ -33,6 +33,8 @@ public final class OverlayView extends View {
     private int fromSq = -1, toSq = -1;
     private boolean whiteAtBottom = true;
     private String status = "ChessMonger: looking for board…";
+    /** MultiPV alternatives line, or null when MultiPV = 1. */
+    private String alternatives = null;
 
     public OverlayView(Context context) {
         super(context);
@@ -72,6 +74,12 @@ public final class OverlayView extends View {
     public synchronized void setSuggestion(Rect board, int fromSq, int toSq,
                                            boolean whiteAtBottom,
                                            String status) {
+        setSuggestion(board, fromSq, toSq, whiteAtBottom, status, null);
+    }
+
+    public synchronized void setSuggestion(Rect board, int fromSq, int toSq,
+                                           boolean whiteAtBottom,
+                                           String status, String alternatives) {
         Rect next = board == null ? null : new Rect(board);
         if (whiteAtBottom == this.whiteAtBottom
                 && fromSq == this.fromSq && toSq == this.toSq
@@ -85,6 +93,7 @@ public final class OverlayView extends View {
         this.toSq = toSq;
         this.whiteAtBottom = whiteAtBottom;
         this.status = status;
+        this.alternatives = alternatives;
         postInvalidate();
     }
 
@@ -96,6 +105,7 @@ public final class OverlayView extends View {
     public synchronized void clearSuggestion() {
         fromSq = -1;
         toSq = -1;
+        alternatives = null;
         postInvalidate();
     }
 
@@ -146,6 +156,12 @@ public final class OverlayView extends View {
             float top = 120;
             canvas.drawRect(24, top, 24 + w, top + 68, textBgPaint);
             canvas.drawText(status, 40, top + 48, textPaint);
+            if (alternatives != null && !alternatives.isEmpty()) {
+                float w2 = textPaint.measureText(alternatives) + 32;
+                float top2 = top + 76;
+                canvas.drawRect(24, top2, 24 + w2, top2 + 68, textBgPaint);
+                canvas.drawText(alternatives, 40, top2 + 48, textPaint);
+            }
         }
     }
 }

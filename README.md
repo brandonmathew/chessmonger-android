@@ -1,4 +1,36 @@
-# ChessMonger Android — v2.0.0 rebuild
+# ChessMonger Android — v2.1.0
+
+## What v2.1.0 changed (UI recode + Stockfish settings)
+
+- **Home screen recoded, not just rearranged:** title, one-line
+  subtitle, permissions line (the overlay button only shows
+  when overlay is *not* allowed), Play as (White/Black/Either),
+  one big Start/Stop button (it becomes Stop when running),
+  a short status line, an Engine summary line, one
+  "Engine settings" button, and a collapsed "More" section
+  (FEN, Resync, tracker log, crash report, updates). The old
+  screen showed all of those buttons plus a long paragraph
+  at once. The overlay itself is unchanged except for the
+  MultiPV line below.
+- **Stockfish is now configurable:** Engine settings dialog
+  (persisted, so it survives relaunch) — think time
+  (500–10000 ms), Skill Level (0–20, 20 = strongest),
+  Limit Strength + Elo (1320–3190, for a human-like
+  opponent), MultiPV (1–5), Threads (auto or 1–8), Hash
+  (auto or 16–1024 MB), Contempt (-100–100). Defaults are
+  the old max strength, so nothing changes unless you
+  change it. Settings apply on the next Start (the dialog
+  says so) — the engine process is created with them, and
+  restarting it mid-game would drop the current search.
+  MultiPV > 1 draws a second line on the board with the
+  2nd/3rd moves and their evals; MultiPV = 1 (default)
+  shows nothing extra, so the board stays uncluttered.
+- **Testable engine config:** `core.EngineSettings`
+  (defaults, clamping, UCI commands, summary) and
+  `core.UciParser` (info-line parsing, including multipv)
+  are pure Java and covered by `EngineSettingsTest`.
+  Total tests: 21/21 pass.
+
 
 Screen-vision chess assistant for Android 8–17 (API 26–37):
 watches the screen via MediaProjection, finds the 8×8 board,

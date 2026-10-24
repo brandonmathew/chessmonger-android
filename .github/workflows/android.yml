@@ -32,7 +32,8 @@ jobs:
             org.junit.runner.JUnitCore \
             com.chessmonger.core.ChessBoardTest \
             com.chessmonger.core.DetectorCoreTest \
-            com.chessmonger.core.TrackerTest
+            com.chessmonger.core.TrackerTest \
+            com.chessmonger.core.EngineSettingsTest
 
   android-build:
     runs-on: ubuntu-latest

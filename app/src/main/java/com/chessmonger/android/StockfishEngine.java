@@ -3,13 +3,18 @@ package com.chessmonger.android;
 import android.app.ActivityManager;
 import android.content.Context;
 
+import com.chessmonger.core.EngineSettings;
+import com.chessmonger.core.UciParser;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -21,11 +26,12 @@ import java.util.concurrent.TimeUnit;
  * from the app's native library directory — the same packaging
  * trick proven in Gambit Chess, so no JNI binding is needed.
  *
- * Max strength, on purpose: no skill cap, no Elo limit, MultiPV 1,
- * all the phone's cores, and a large hash. The only limit is time:
- * {@code movetimeMs} from the UI. Longer think = deeper search =
- * stronger move, at the cost of waiting longer for the arrow.
- * One process serves the whole app; calls are serialised.
+ * v2.1.0: configurable via core.EngineSettings (see that class
+ * for defaults and ranges). The old hard-coded max strength is
+ * still the default, so existing callers that pass no settings
+ * get exactly the old behaviour. One process serves the whole
+ * app; calls are serialised. Settings apply at process start;
+ * changing them in the UI applies on the next Start.
  */
 public final class StockfishEngine {
 
@@ -36,6 +42,8 @@ public final class StockfishEngine {
         public int scoreCp;       // from the side-to-move's view
         public int mate;          // 0 = no mate, else mate in N (signed)
         public List<String> pv = new ArrayList<>();
+        /** MultiPV alternatives (pv 2..N), empty when MultiPV = 1. */
+        public List<Result> alternatives = new ArrayList<>();
 
         public String evalText() {
             if (mate != 0) return mate > 0 ? "Mate in " + mate
@@ -51,6 +59,10 @@ public final class StockfishEngine {
     private static long lastStartAttemptMs;
 
     public static synchronized StockfishEngine get(Context context) {
+        return get(context, new EngineSettings());
+    }
+
+    public static synchronized StockfishEngine get(Context context, EngineSettings settings) {
         // v1.5.0: the old code returned a dead instance forever.
         // Once Stockfish died (OOM, system kill, a failed search
         // that called kill()), analyze() returned null on every
@@ -77,7 +89,15 @@ public final class StockfishEngine {
                     context.getApplicationInfo().nativeLibraryDir,
                     "libstockfish.so");
             if (!binary.exists()) { startFailed = true; return null; }
-            instance = new StockfishEngine(binary, hashForDevice(context));
+            if (settings == null) settings = new EngineSettings();
+            settings.clamp();
+            int threads = settings.threadsAuto
+                    ? Math.max(1, Math.min(8,
+                            Runtime.getRuntime().availableProcessors()))
+                    : settings.threads;
+            int hashMb = settings.hashAuto
+                    ? hashForDevice(context) : settings.hashMb;
+            instance = new StockfishEngine(binary, settings, threads, hashMb);
             startFailed = false;
             return instance;
         } catch (Exception e) {
@@ -124,7 +144,8 @@ public final class StockfishEngine {
     private final Object lock = new Object();
     private volatile boolean dead;
 
-    private StockfishEngine(File binary, int hashMb) throws Exception {
+    private StockfishEngine(File binary, EngineSettings settings,
+                            int threads, int hashMb) throws Exception {
         // The extracted .so needs the executable bit on some devices.
         // setExecutable is harmless when it is already executable.
         try { binary.setExecutable(true); } catch (Exception ignored) {}
@@ -153,15 +174,9 @@ public final class StockfishEngine {
 
         send("uci");
         expect("uciok", 8000);
-        // Max strength: full skill, no Elo cap, all cores, big hash.
-        int threads = Math.max(1, Math.min(8,
-                Runtime.getRuntime().availableProcessors()));
-        send("setoption name Threads value " + threads);
-        send("setoption name Hash value " + hashMb);
-        send("setoption name Skill Level value 20");
-        send("setoption name UCI_LimitStrength value false");
-        send("setoption name MultiPV value 1");
-        send("setoption name UCI_ShowWDL value true");
+        for (String cmd : settings.uciOptions(threads, hashMb)) {
+            send(cmd);
+        }
         send("isready");
         expect("readyok", 8000);
     }
@@ -186,7 +201,12 @@ public final class StockfishEngine {
         send("position fen " + fen);
         send("go movetime " + movetimeMs);
 
-        Result result = new Result();
+        // Per-MultiPV best info at the deepest depth seen.
+        // The main result is multipv 1; the rest become
+        // alternatives, in multipv order, for the overlay.
+        Map<Integer, Result> pvResults = new HashMap<>();
+        String bestMove = null;
+        String ponder = null;
         long deadline = System.currentTimeMillis() + movetimeMs + 8000;
         boolean stopped = false;
         while (true) {
@@ -206,47 +226,40 @@ public final class StockfishEngine {
             if (line.startsWith("bestmove")) {
                 String[] parts = line.split("\\s+");
                 if (parts.length < 2 || "(none)".equals(parts[1])) return null;
-                result.bestMove = parts[1];
+                bestMove = parts[1];
                 if (parts.length >= 4 && "ponder".equals(parts[2])) {
-                    result.ponder = parts[3];
+                    ponder = parts[3];
                 }
                 break;
             }
             if (line.startsWith("info") && line.contains(" pv ")) {
-                parseInfo(line, result);
-            }
-        }
-        return result.bestMove == null ? null : result;
-    }
-
-    private void parseInfo(String line, Result out) {
-        try {
-            String[] t = line.split("\\s+");
-            int depth = 0, scoreCp = 0, mate = 0;
-            List<String> pv = new ArrayList<>();
-            boolean inPv = false;
-            for (int i = 0; i < t.length; i++) {
-                if ("depth".equals(t[i]) && i + 1 < t.length) {
-                    depth = Integer.parseInt(t[i + 1]);
-                } else if ("mate".equals(t[i]) && i + 1 < t.length) {
-                    mate = Integer.parseInt(t[i + 1]);
-                } else if ("cp".equals(t[i]) && i + 1 < t.length) {
-                    scoreCp = Integer.parseInt(t[i + 1]);
-                } else if ("pv".equals(t[i])) {
-                    inPv = true;
-                } else if (inPv) {
-                    pv.add(t[i]);
+                UciParser.Info info = UciParser.parse(line);
+                if (info == null) continue;
+                Result existing = pvResults.get(info.multipv);
+                if (existing == null || info.depth >= existing.depth) {
+                    Result r = new Result();
+                    r.depth = info.depth;
+                    r.scoreCp = info.scoreCp;
+                    r.mate = info.mate;
+                    r.pv = new ArrayList<>(info.pv);
+                    r.bestMove = info.pv.get(0);
+                    pvResults.put(info.multipv, r);
                 }
             }
-            if (!pv.isEmpty() && depth >= out.depth) {
-                out.depth = depth;
-                out.scoreCp = scoreCp;
-                out.mate = mate;
-                out.pv = pv;
-            }
-        } catch (Exception ignored) {
-            // A malformed info line never kills the search.
         }
+        Result result = pvResults.get(1);
+        if (result == null) {
+            result = new Result();
+            result.bestMove = bestMove;
+        } else {
+            result.bestMove = bestMove;
+        }
+        result.ponder = ponder;
+        for (int i = 2; i <= 5; i++) {
+            Result alt = pvResults.get(i);
+            if (alt != null) result.alternatives.add(alt);
+        }
+        return result.bestMove == null ? null : result;
     }
 
     private void send(String command) throws Exception {

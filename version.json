@@ -1,7 +1,7 @@
 {
-  "versionCode": 16,
-  "versionName": "2.0.0",
-  "apkUrl": "https://github.com/brandonmathew/chessmonger-android/releases/download/v2.0.0/ChessMongerAndroid-2.0.0.apk",
-  "sha256": "95b126bea7fcc8674a88389ed626413a644afaea22a9b40d3bedd8d36078e260",
-  "notes": "Full rebuild: cleaner code, a real test suite, and a tracker log you can share. Same board detection and Stockfish strength as 1.12.0, now in a structure that is easier to fix and test."
+  "versionCode": 17,
+  "versionName": "2.1.0",
+  "apkUrl": "https://github.com/brandonmathew/chessmonger-android/releases/download/v2.1.0/ChessMongerAndroid-2.1.0.apk",
+  "sha256": "1d836c5d0ae52d9c61128835b0a067b5d4d558123f495c6c61e0593e972f39d0",
+  "notes": "Cleaner home screen and full Stockfish settings: skill level, Elo limit, MultiPV, threads, hash, and contempt, all saved between launches."
 }

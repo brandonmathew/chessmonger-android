@@ -23,6 +23,7 @@ import android.util.DisplayMetrics;
 import android.view.WindowManager;
 
 import com.chessmonger.core.ChessBoard;
+import com.chessmonger.core.EngineSettings;
 import com.chessmonger.core.DetectorCore;
 import com.chessmonger.core.Tracker;
 import com.chessmonger.core.TrackerLog;
@@ -68,6 +69,16 @@ public final class CaptureService extends Service {
     public static final String EXTRA_MY_COLOR = "myColor";
     public static final String EXTRA_THINK_MS = "thinkMs";
     public static final String EXTRA_FEN = "fen";
+    // v2.1.0 engine settings (all optional; missing = defaults).
+    public static final String EXTRA_SKILL = "skillLevel";
+    public static final String EXTRA_LIMIT = "limitStrength";
+    public static final String EXTRA_ELO = "elo";
+    public static final String EXTRA_MULTIPV = "multipv";
+    public static final String EXTRA_THREADS_AUTO = "threadsAuto";
+    public static final String EXTRA_THREADS = "threads";
+    public static final String EXTRA_HASH_AUTO = "hashAuto";
+    public static final String EXTRA_HASH_MB = "hashMb";
+    public static final String EXTRA_CONTEMPT = "contempt";
 
     private static final String CHANNEL = "chessmonger";
     private static final int NOTIF_ID = 1;
@@ -86,6 +97,7 @@ public final class CaptureService extends Service {
 
     private Tracker tracker;
     private int thinkMs = 2000;
+    private EngineSettings engineSettings = new EngineSettings();
     private int captureWidth, captureHeight;
     private String lastStatus = "";
 
@@ -152,6 +164,19 @@ public final class CaptureService extends Service {
             thinkMs = intent.getIntExtra(EXTRA_THINK_MS, 2000);
             if (thinkMs < 500) thinkMs = 500;
             if (thinkMs > 10000) thinkMs = 10000;
+            EngineSettings s = new EngineSettings();
+            s.thinkMs = thinkMs;
+            s.skillLevel = intent.getIntExtra(EXTRA_SKILL, 20);
+            s.limitStrength = intent.getBooleanExtra(EXTRA_LIMIT, false);
+            s.elo = intent.getIntExtra(EXTRA_ELO, 1800);
+            s.multipv = intent.getIntExtra(EXTRA_MULTIPV, 1);
+            s.threadsAuto = intent.getBooleanExtra(EXTRA_THREADS_AUTO, true);
+            s.threads = intent.getIntExtra(EXTRA_THREADS, 4);
+            s.hashAuto = intent.getBooleanExtra(EXTRA_HASH_AUTO, true);
+            s.hashMb = intent.getIntExtra(EXTRA_HASH_MB, 128);
+            s.contempt = intent.getIntExtra(EXTRA_CONTEMPT, 0);
+            s.clamp();
+            engineSettings = s;
             tracker = new Tracker(myColor);
             sTrackerLog = tracker.log();
             String fen = intent.getStringExtra(EXTRA_FEN);
@@ -353,7 +378,7 @@ public final class CaptureService extends Service {
     }
 
     private void analyse(final String fenForEngine) {
-        setStatus("Thinking…");
+        setStatus("Thinking… (" + (thinkMs / 1000.0) + "s)");
         final com.chessmonger.core.Rect boardRectCore = tracker.lockedBoard();
         if (boardRectCore == null) {
             tracker.clearAnalysingFenIfEquals(fenForEngine);
@@ -363,7 +388,8 @@ public final class CaptureService extends Service {
         if (engineThread == null) return;
         engineThread.execute(new Runnable() {
             @Override public void run() {
-                StockfishEngine engine = StockfishEngine.get(CaptureService.this);
+                StockfishEngine engine = StockfishEngine.get(
+                        CaptureService.this, engineSettings);
                 if (engine == null) {
                     tracker.clearAnalysingFen();
                     setStatus("Stockfish failed to start on this phone");
@@ -386,10 +412,22 @@ public final class CaptureService extends Service {
                     tracker.clearAnalysingFen();
                     return;
                 }
+                String mainText = "Play " + r.bestMove + "  ·  Eval " + r.evalText()
+                        + "  ·  Depth " + r.depth;
+                String altText = null;
+                if (r.alternatives != null && !r.alternatives.isEmpty()) {
+                    StringBuilder alt = new StringBuilder();
+                    int rank = 2;
+                    for (StockfishEngine.Result a : r.alternatives) {
+                        if (alt.length() > 0) alt.append("  ·  ");
+                        alt.append(rank).append(": ").append(a.bestMove)
+                                .append(" (").append(a.evalText()).append(")");
+                        rank++;
+                    }
+                    altText = alt.toString();
+                }
                 overlay.setSuggestion(boardRect, m.from, m.to,
-                        tracker.whiteAtBottom(),
-                        "Play " + r.bestMove + "  ·  Eval " + r.evalText()
-                                + "  ·  Depth " + r.depth);
+                        tracker.whiteAtBottom(), mainText, altText);
             }
         });
     }
