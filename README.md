@@ -6,6 +6,67 @@ front, tracks the game, asks Stockfish 17.1 at max strength for the
 best move on your turn, and draws that move as a green arrow on top
 of the board. It never taps or plays for you — suggestion only.
 
+## v1.12.0: colour-agnostic board detection + Stockfish livetest harness
+
+The user was right that colour is the big downfall. A new
+livetest harness (~/workspace/livetest/, kept in the repo
+notes, not in the APK) plays Stockfish 17.1 vs itself via
+UCI, renders each position as a phone screenshot in 10
+board colours, and runs the detector on every frame.
+
+Old detector results on a 40-move Stockfish game (41
+positions): green, wood, lichess brown/blue/purple, dark
+grey, and low-contrast all read 41/41 exactly — but
+beige-on-beige, white-on-white, and black-on-black read
+0/41, with up to 16 squares wrong in a single position.
+Root cause, proven by the harness: the old classifier
+checked "centre close to background => empty" BEFORE
+any calibrated check, so a beige white piece on a beige
+square (distance ~9) and a near-black piece on a
+near-black square (distance ~7) always read as empty,
+and calibration could never land because baseline
+confirmation needs a small delta first.
+
+Fixes:
+
+- Calibrated RGB piece colours, per screen parity, not
+  just luminance. Classification is now nearest-colour
+  in RGB among empty / calibrated white / calibrated
+  black, with the empty gate removed from before the
+  calibrated check. An empty square still wins because
+  its centre IS its background; a piece centre is its
+  piece colour, even when that colour is close to its
+  square.
+- Bootstrap calibration in CaptureService: on a stable
+  baseline frame that does not match, trial-calibrate
+  from the tracked board and re-read, keeping the new
+  calibration only if the re-read matches better
+  (snapshot/restore, so a trial on a wrong position
+  cannot corrupt a good calibration). New-game triggers
+  also calibrate from the start frame and re-read with
+  the new colours, so a theme change between games
+  does not carry the old game's calibration forward.
+- Adaptive highlights: the top two background distances
+  are accepted only if they are clear outliers over the
+  third square, instead of an absolute threshold of 30
+  that fails both ways across themes.
+- Board-hidden threshold 25 -> 15: a popup / black
+  capture is ~0-5, so 15 still separates "board gone"
+  from "board present" while letting low-contrast boards
+  through.
+
+Harness results with the fix: all 10 themes read
+41/41 exactly, highlights 40/40, including the three
+themes that were 0/41 before. Bootstrap test: an
+uncalibrated start frame on the three hard themes went
+from delta 8/8/16 to delta 0 after calibrate + re-read.
+
+Honest limit: this is a synthetic livetest, not a real
+phone. It proves colour classification across themes on
+rendered boards; it does not prove real Chess.com
+animations, popups, or MediaProjection timing, which
+still need your live test.
+
 ## v1.11.0: GitHub Releases auto-update with download & install
 
 Replaces the v1.9.0 raw-main version.json check, which

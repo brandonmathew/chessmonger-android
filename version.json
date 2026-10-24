@@ -1,7 +1,7 @@
 {
-  "versionCode": 14,
-  "versionName": "1.11.0",
-  "apkUrl": "https://github.com/brandonmathew/chessmonger-android/releases/download/v1.11.0/ChessMongerAndroid-1.11.0.apk",
-  "sha256": "84f356be3b825e07bb329a3eb690fb047590021b17b4743ad8a1f2b37ecb8247",
-  "notes": "Auto-update now uses GitHub Releases and downloads and installs the update in the app, with no browser step. You still tap Install once in the system installer."
+  "versionCode": 15,
+  "versionName": "1.12.0",
+  "apkUrl": "https://github.com/brandonmathew/chessmonger-android/releases/download/v1.12.0/ChessMongerAndroid-1.12.0.apk",
+  "sha256": "ffba71620ba7cf403c82a10302ae3c12a03de648038b7f94a2d25d51d758a790",
+  "notes": "Board detection now works across board colours: beige, white-on-white, and black-on-black boards that used to read as empty now read exactly. Highlights and low-contrast boards are also more reliable."
 }
