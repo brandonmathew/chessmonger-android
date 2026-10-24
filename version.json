@@ -1,0 +1,7 @@
+{
+  "versionCode": 12,
+  "versionName": "1.9.0",
+  "apkUrl": "https://raw.githubusercontent.com/brandonmathew/chessmonger-android/main/ChessMongerAndroid-1.9.0.apk",
+  "sha256": "3af6015562b4cdb92c46c9c233fee7b5c936a8fc30834ded022ef021ade02e0f",
+  "notes": "Checkmate pause until a new game starts, stuck-waiting recovery for missed moves like Kxh8, and GitHub auto-update check on every fresh start."
+}
