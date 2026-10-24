@@ -6,6 +6,61 @@ front, tracks the game, asks Stockfish 17.1 at max strength for the
 best move on your turn, and draws that move as a green arrow on top
 of the board. It never taps or plays for you — suggestion only.
 
+## v1.10.0: robust new-game detection
+
+The user played a whole match on v1.9.0, but new-game
+detection after it was fragile and failed. Evidence from
+the three screenshots he sent (all 945x2048, wooden
+Chess.com board, rect 0,608-945,1553):
+
+- Start-position screenshots (both the first game and the
+  next game) read exactly as the start position, and the
+  checker distance at that rect is ~120, far above the
+  25 hidden threshold — so the board itself is not the
+  problem, and the win-popup screenshot correctly reads
+  checker distance 2.5 (hidden).
+- The win popup ("You Beat Zach! by Checkmate") is the
+  break: it covers the board, so the hidden-board guard
+  (which runs before any tracking) holds the position,
+  and after 24 hidden frames (~6 s) it cleared the
+  whole tracking state — including the checkmate pause.
+  The tracker then forgot the game had ended.
+- After that, a new game looked like a desync from the
+  mated position, not a new game: the old code required
+  two start frames judged against prevOccupancy, but
+  prevOccupancy is stale after a hidden period and null
+  after a lock release, so the first visible start frame
+  never counted; and recovery only tried the tracked
+  position, its forward moves, and the last-50 history —
+  a whole match is longer than 50 plies, so the start
+  had usually fallen out of history. If the user also
+  played the first move before two untouched start
+  frames appeared, no path at all led back to the new
+  game.
+
+Fixes:
+
+- New-game counting uses a dedicated newGameFrames
+  counter, not prevOccupancy. It is not reset by hidden
+  frames or by a lock release, so the first visible
+  start frame counts. Two start frames still required,
+  so one noisy frame cannot reset a game.
+- On a new-game trigger the baseline is set directly:
+  two identical start frames ARE the confirmation, so
+  there is no "confirming position…" limbo afterwards.
+- The checkmate pause (and a new gameEnded flag, set
+  on checkmate and on any other game-over) now survives
+  the board-hidden timeout and a lock release. Only an
+  explicit Resync / FEN / Start, or a confirmed new
+  game, clears them.
+- Recovery now tries the starting position as a base,
+  exact or via a 1-2 ply forward sequence, with history
+  reset to the new game. That catches the fast-first-
+  move case: a new game where the user already played
+  1.e4 (or 1.e4 e5) before two untouched start frames
+  appeared now recovers to the new game instead of
+  staying "out of sync" forever.
+
 ## v1.9.0: Kxh8 freeze, checkmate pause, GitHub auto-update
 
 The user reported the tracker froze at 15...Kxh8, stuck on
